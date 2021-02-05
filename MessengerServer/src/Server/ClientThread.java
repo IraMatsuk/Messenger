@@ -3,8 +3,10 @@ package Server;
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Scanner;
 
+//Create threads for clients
 public class ClientThread extends Thread{
     private Socket client;
     private DataOutputStream outputStream;
@@ -14,14 +16,12 @@ public class ClientThread extends Thread{
 
     ClientThread (Socket client) throws IOException {
         this.client = client;
-        users = new File("users_list.data");
+        users = new File("users_list.data"); //указывааем путь к файлу
         out = new FileOutputStream(users, true);
     }
 
     private void send(String data) throws IOException {
-        outputStream.writeUTF(data);
-        //outputStream.writeUTF(data + '\n');
-
+        outputStream.writeUTF(data); //пишем в поток
     }
 
     private boolean registry(Command cmd) throws FileNotFoundException {
@@ -58,11 +58,44 @@ public class ClientThread extends Thread{
             while (reader.hasNextLine()) {
                 String data = reader.nextLine();
                 if (data.startsWith(userNameAndPsw)) {
+                    Map<Socket, String> clientList = Server.getClientList();
+                    clientList.replace(client, items.get(1) + " " + items.get(2));
                     return true;
                 }
             }
         }
         return false;
+    }
+
+    private boolean findUser(Command cmd) throws FileNotFoundException {
+        ArrayList<String> items = cmd.getItems();
+        if(items.isEmpty()) {
+            return false;
+        }
+
+        String userName = items.get(1);
+        try(Scanner reader = new Scanner(users)) {
+            while (reader.hasNextLine()) {
+                String data = reader.nextLine();
+                //boolean dataIgnoreCase = data.equalsIgnoreCase(userName);
+                if(data.startsWith(userName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private String getUserList() throws FileNotFoundException {
+        String userList = "";
+        try(Scanner reader = new Scanner(users)) {
+            while (reader.hasNextLine()) {
+                String data = reader.nextLine();
+                String[] userData = data.split(" ");
+                userList += userData[0] + " " + userData[1] + "_";
+            }
+        }
+        return userList;
     }
 
     @Override
@@ -101,6 +134,30 @@ public class ClientThread extends Thread{
                                 responseCmd.create(requestedCmd.getType(), Command.States.ERROR,"Invalid login");
                             send(responseCmd.toString());
                             continue;
+                        case FIND_USER:
+                            if(findUser(requestedCmd))
+                                responseCmd.create(requestedCmd.getType(), Command.States.OK);
+                            else
+                                responseCmd.create(requestedCmd.getType(), Command.States.ERROR,"Invalid find user");
+                            send(responseCmd.toString());
+                            continue;
+                        case LIST_USERS:
+                            String users = getUserList();
+                            if (!users.isEmpty()) {
+                                responseCmd.create(requestedCmd.getType(), Command.States.OK, users);
+                            } else {
+                                responseCmd.create(requestedCmd.getType(), Command.States.ERROR, "Invalid");
+                            }
+                            send(responseCmd.toString());
+                            continue;
+                        case SEND:
+                            if (send(requestedCmd)) {
+                                responseCmd.create(requestedCmd.getType(), Command.States.OK);
+                            } else {
+                                responseCmd.create(requestedCmd.getType(), Command.States.ERROR, "Invalid");
+                            }
+                            send(responseCmd.toString());
+                            continue;
                         default:
                             responseCmd.create(Command.Cmds.ERROR, Command.States.ERROR,"Invalid command");
                             send(responseCmd.toString());
@@ -112,5 +169,27 @@ public class ClientThread extends Thread{
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private boolean send(Command cmd) throws IOException {
+        ArrayList<String> items = cmd.getItems();
+        if(items.isEmpty() || items.size() != 3)
+            return false;
+
+        String destinationUserName = items.get(1);
+        String msg = items.get(2);
+        Map<Socket, String> clientList = Server.getClientList();
+        for(Map.Entry<Socket, String> item : clientList.entrySet()){
+            if (item.getValue().equals(destinationUserName)) {
+                Socket destSocket = item.getKey();
+                try(DataOutputStream dos = new DataOutputStream(destSocket.getOutputStream())){
+                    Command responseCmd = new Command();
+                    responseCmd.create(Command.Cmds.RECEIVE, Command.States.OK, msg);
+                    dos.writeUTF(responseCmd.toString());
+                    dos.close();
+                }
+            }
+        }
+        return true;
     }
 }

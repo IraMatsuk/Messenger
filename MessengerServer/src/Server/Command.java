@@ -7,7 +7,11 @@ public class Command {
         UNKNOWN,
         ERROR,
         REGISTRY,
-        LOGIN
+        LOGIN,
+        FIND_USER,
+        LIST_USERS,
+        SEND,
+        RECEIVE,
     }
     enum States{
         UNKNOWN,
@@ -16,7 +20,11 @@ public class Command {
     }
     private final String registryCmdStr = "<registry>";
     private final String loginCmdStr = "<login>";
+    private final String findUserCmdStr = "<findUser>";
+    private final String listUsersCmdStr = "<usersList>";
     private final String errorCmdStr = "<error>";
+    private final String sendCmdStr = "<sendMsg>";
+    private final String receiveCmdStr = "<receiveMsg>";
     private String cmdStr = "";
     private Cmds type = Cmds.UNKNOWN;
     private States state = States.UNKNOWN;
@@ -31,6 +39,22 @@ public class Command {
             case LOGIN:
                 type = cmd;
                 cmdStr += loginCmdStr;
+                break;
+            case FIND_USER:
+                type = cmd;
+                cmdStr += findUserCmdStr;
+                break;
+            case LIST_USERS:
+                type = cmd;
+                cmdStr += listUsersCmdStr;
+                break;
+            case SEND:
+                type = cmd;
+                cmdStr += sendCmdStr;
+                break;
+            case RECEIVE:
+                type = cmd;
+                cmdStr += receiveCmdStr;
                 break;
             case ERROR:
                 type = cmd;
@@ -54,6 +78,9 @@ public class Command {
         }
 
         if(!cmdStr.isEmpty()) {
+            for (String item : args) {
+                cmdStr += "_" + item;
+            }
             return true;
         } else{
             // unknown cmd
@@ -71,6 +98,18 @@ public class Command {
                 break;
             case loginCmdStr:
                 type = Cmds.LOGIN;
+                break;
+            case findUserCmdStr:
+                type = Cmds.FIND_USER;
+                break;
+            case listUsersCmdStr:
+                type = Cmds.LIST_USERS;
+                break;
+            case sendCmdStr:
+                type = Cmds.SEND;
+                break;
+            case receiveCmdStr:
+                type = Cmds.RECEIVE;
                 break;
             case errorCmdStr:
                 type = Cmds.ERROR;
