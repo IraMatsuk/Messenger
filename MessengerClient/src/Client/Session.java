@@ -51,4 +51,15 @@ public class Session implements ISession{
             return "";
         }
     }
+
+    public String nonBlockReceive() {
+        try {
+            if(inputStream.available() != 0)
+                return inputStream.readUTF();
+            else
+                return "";
+        } catch (IOException e) {
+            return "";
+        }
+    }
 }
